@@ -1,0 +1,6 @@
+node_modules/
+dist/
+__pycache__/
+*.exe
+*.xlsx
+!App/src/price_template.xlsx

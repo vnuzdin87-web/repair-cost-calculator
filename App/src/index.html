@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор стоимости ремонта</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <div class="header-left">
+                <div class="logo">
+                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                        <rect x="4" y="6" width="20" height="16" rx="2" stroke="url(#g)" stroke-width="2"/>
+                        <path d="M4 10H24M10 6V22" stroke="url(#g)" stroke-width="2"/>
+                        <defs><linearGradient id="g" x1="4" y1="6" x2="24" y2="22"><stop stop-color="#7aa2ff"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs>
+                    </svg>
+                    <div>
+                        <div class="logo-title">Калькулятор стоимости ремонта</div>
+                        <div class="logo-subtitle">Локальный расчёт сметы • 5-комнатная квартира 200 м²</div>
+                    </div>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="btn btn-ghost" id="btnReloadYandex" title="Загрузить актуальный прайс с Яндекс.Диска">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9C3 5.68629 5.68629 3 9 3C11.0883 3 12.9252 4.06569 14 5.63604M15 9C15 12.3137 12.3137 15 9 15C6.91165 15 5.07475 13.9343 4 12.364M14 3V5.63604H11.364M4 15V12.364H6.636" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Обновить с Яндекс.Диска
+                </button>
+                <button class="btn btn-ghost btn-manual" id="btnLoad" title="Загрузить Excel/CSV с компьютера">
+                    <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M9 12V2M9 12L5 8M9 12L13 8M3 16H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Загрузить файл вручную
+                </button>
+                <button class="btn btn-ghost" id="btnSave">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M14 16H4C3.44772 16 3 15.5523 3 15V3C3 2.44772 3.44772 2 4 2H12L15 5V15C15 15.5523 14.5523 16 14 16Z" stroke="currentColor" stroke-width="1.5"/><path d="M6 16V10H12V16M6 2V6H11" stroke="currentColor" stroke-width="1.5"/></svg>
+                    Сохранить смету (Excel)
+                </button>
+                <div class="file-status" id="fileStatus">Данные не загружены</div>
+            </div>
+        </header>
+
+        <div class="main">
+            <aside class="sidebar">
+                <div class="panel">
+                    <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                        <span>Данные клиента</span>
+                        <button class="btn btn-ghost" id="btnNewOrder" style="padding:6px 10px;font-size:12px;">Новый заказ</button>
+                    </div>
+                    <div class="field">
+                        <label>ФИО/Заказчик</label>
+                        <input type="text" id="clientName" placeholder="Иванов И.И.">
+                    </div>
+                    <div class="field">
+                        <label>Телефон</label>
+                        <input type="text" id="clientPhone" placeholder="+7 (___) ___-__-__">
+                    </div>
+                    <div class="field">
+                        <label>Адрес объекта</label>
+                        <input type="text" id="clientAddress" placeholder="Адрес квартиры">
+                    </div>
+                    <div class="field">
+                        <label>Комментарий</label>
+                        <textarea id="clientComment" rows="3" placeholder="Пожелания клиента..."></textarea>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-title">Сегмент отделки</div>
+                    <div class="segment-group">
+                        <button class="seg-btn active" data-segment="Эконом">Эконом</button>
+                        <button class="seg-btn" data-segment="Средний">Стандарт</button>
+                        <button class="seg-btn" data-segment="Премиум">Премиум</button>
+                        <button class="seg-btn" data-segment="Люкс">Люкс</button>
+                    </div>
+                    <div class="hint">Фильтр: в подборе материалов и санузлов показаны позиции только выбранного сегмента</div>
+                </div>
+
+                <div class="panel summary-panel">
+                    <div class="panel-title">Итого по смете</div>
+                    <div class="sum-row"><span>Работы</span><span id="sumWorks">0 ₽</span></div>
+                    <div class="sum-row"><span>Материалы</span><span id="sumMaterials">0 ₽</span></div>
+                    <div class="sum-row"><span>Санузлы</span><span id="sumBath">0 ₽</span></div>
+                    <div class="sum-divider"></div>
+                    <div class="sum-row sum-total"><span>ИТОГО</span><span id="sumTotal">0 ₽</span></div>
+                    <button class="btn btn-primary btn-block" id="btnRecalc">
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9C3 5.68629 5.68629 3 9 3C11.0883 3 12.9252 4.06569 14 5.63604M15 9C15 12.3137 12.3137 15 9 15C6.91165 15 5.07475 13.9343 4 12.364M6 5.63604H14V3M12 12.364H4V15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Пересчитать
+                    </button>
+                </div>
+            </aside>
+
+            <main class="content">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="works">1. Работы</button>
+                    <button class="tab-btn" data-tab="materials">2. Подбор материалов</button>
+                    <button class="tab-btn" data-tab="bathrooms">3. Санузлы</button>
+                    <button class="tab-btn" data-tab="estimate">4. Смета клиента</button>
+                </div>
+
+                <section class="tab-panel active" id="tab-works">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div class="panel-title">Перечень работ с объёмами и ценами</div>
+                            <div class="filters">
+                                <button class="filter-chip active" data-filter="all">Все</button>
+                                <button class="filter-chip" data-filter="Демонтаж">Демонтаж</button>
+                                <button class="filter-chip" data-filter="Черновые">Черновые</button>
+                                <button class="filter-chip" data-filter="Чистовые">Чистовые</button>
+                                <button class="filter-chip" data-filter="Инженерия">Инженерия</button>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table class="data-table" id="worksTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width:40px">Вкл</th>
+                                        <th style="width:60px">№</th>
+                                        <th style="width:120px">Группа</th>
+                                        <th>Наименование работ</th>
+                                        <th style="width:80px">Ед.изм.</th>
+                                        <th style="width:90px">Объём</th>
+                                        <th style="width:130px">Цена за ед.</th>
+                                        <th style="width:130px">Сумма</th>
+                                        <th>Требования к приёмке</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="tab-panel" id="tab-materials">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div class="panel-title">Подбор материалов по сегменту отделки</div>
+                            <div class="hint" id="matSegmentHint">Текущий сегмент: Эконом</div>
+                        </div>
+                        <div class="table-wrap">
+                            <table class="data-table" id="materialsTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width:40px">Вкл</th>
+                                        <th style="width:140px">Категория</th>
+                                        <th>Наименование</th>
+                                        <th style="width:120px">Сегмент</th>
+                                        <th style="width:160px">Бренд</th>
+                                        <th style="width:80px">Ед.изм.</th>
+                                        <th style="width:110px">Расход</th>
+                                        <th style="width:130px">Цена за ед.</th>
+                                        <th style="width:130px">Сумма</th>
+                                        <th>Характеристика</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="tab-panel" id="tab-bathrooms">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div class="panel-title">Санузлы: подбор оборудования</div>
+                        </div>
+                        <div class="table-wrap">
+                            <table class="data-table" id="bathTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width:40px">Вкл</th>
+                                        <th style="width:160px">Помещение</th>
+                                        <th>Наименование</th>
+                                        <th style="width:120px">Сегмент</th>
+                                        <th style="width:200px">Бренд</th>
+                                        <th style="width:80px">Ед.изм.</th>
+                                        <th style="width:80px">Кол-во</th>
+                                        <th style="width:130px">Цена за ед.</th>
+                                        <th style="width:130px">Сумма</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="tab-panel" id="tab-estimate">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div class="panel-title">Смета для клиента (сформированная)</div>
+                            <button class="btn btn-ghost" onclick="window.print()">Печать</button>
+                        </div>
+                        <div class="estimate" id="estimateView">
+                            <div class="est-header">
+                                <div class="est-title">СМЕТА НА КАПИТАЛЬНЫЙ РЕМОНТ</div>
+                                <div class="est-sub">Квартира 5-комнатная, 200 м²</div>
+                            </div>
+                            <div class="est-client">
+                                <div><strong>Заказчик:</strong> <span id="estClient">-</span></div>
+                                <div><strong>Телефон:</strong> <span id="estPhone">-</span></div>
+                                <div><strong>Адрес:</strong> <span id="estAddr">-</span></div>
+                                <div><strong>Сегмент отделки:</strong> <span id="estSeg">Эконом</span></div>
+                            </div>
+                            <div class="est-block">
+                                <div class="est-block-title">РАБОТЫ</div>
+                                <table class="est-table" id="estWorks"></table>
+                            </div>
+                            <div class="est-block">
+                                <div class="est-block-title">МАТЕРИАЛЫ</div>
+                                <table class="est-table" id="estMat"></table>
+                            </div>
+                            <div class="est-block">
+                                <div class="est-block-title">САНУЗЛЫ</div>
+                                <table class="est-table" id="estBath"></table>
+                            </div>
+                            <div class="est-total">
+                                <div>ИТОГО РАБОТЫ: <span id="estSumW">0</span> ₽</div>
+                                <div>ИТОГО МАТЕРИАЛЫ: <span id="estSumM">0</span> ₽</div>
+                                <div>ИТОГО САНУЗЛЫ: <span id="estSumB">0</span> ₽</div>
+                                <div class="est-grand">ВСЕГО К ОПЛАТЕ: <span id="estSumG">0</span> ₽</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
